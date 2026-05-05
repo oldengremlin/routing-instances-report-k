@@ -12,22 +12,17 @@
  * See the License for the specific language governing permissions and limitations
  * under the License.
  */
-package net.ukrhub.routing.instances.report;
+package net.ukrhub.routing.instances.report
 
 /**
- * Status codes reported in {@code connection-status} elements of Juniper
- * {@code get-l2ckt-connection-information} and
- * {@code get-vpls-connection-information} RPC replies.
+ * Status codes reported in `connection-status` elements of Juniper
+ * `get-l2ckt-connection-information` and `get-vpls-connection-information`
+ * RPC replies.
  *
- * <p>Most codes are shared between L2CIRCUIT and VPLS; a few are specific
- * to one type. The {@link #describe} helper converts a raw code string
- * (as it appears in the XML) to a human-readable description.</p>
- *
- * <p>Codes marked with <b>(L2)</b> appear only in the L2CIRCUIT legend;
- * codes marked with <b>(VPLS)</b> appear only in the VPLS legend; the rest
- * are common to both.</p>
+ * Most codes are shared between L2CIRCUIT and VPLS; a few are specific to one
+ * type. [describe] converts a raw code string to a human-readable description.
  */
-enum ConnectionStatus {
+internal enum class ConnectionStatus(val description: String) {
     /* ----- common ----- */
     EI("encapsulation invalid"),
     EM("encapsulation mismatch"),
@@ -72,34 +67,24 @@ enum ConnectionStatus {
     RB("remote site not best-site"),
     SN("static neighbor");
 
-    private final String description;
-
-    ConnectionStatus(String description) {
-        this.description = description;
-    }
-
-    /**
-     * Returns the human-readable description for {@code code}, or
-     * {@code code} itself when the code is not recognised.
-     *
-     * <p>Lookup is case-insensitive; hyphens in the code (e.g.
-     * {@code VC-Dn}) are replaced with underscores before matching.</p>
-     *
-     * @param code raw status code from the XML (e.g. {@code NP}, {@code OL},
-     *             {@code VC-Dn})
-     * @return     description string
-     */
-    static String describe(String code) {
-        if (code == null || code.isBlank()) {
-            return code;
-        }
-        if ("->".equals(code)) return "only outbound connection is up";
-        if ("<-".equals(code)) return "only inbound connection is up";
-        String normalized = code.replace("-", "_").toUpperCase();
-        try {
-            return ConnectionStatus.valueOf(normalized).description;
-        } catch (IllegalArgumentException e) {
-            return code;
+    companion object {
+        /**
+         * Returns the human-readable description for [code], or [code] itself
+         * when the code is not recognised.
+         *
+         * Lookup is case-insensitive; hyphens (e.g. `VC-Dn`) are replaced with
+         * underscores before matching.
+         */
+        fun describe(code: String?): String? {
+            if (code.isNullOrBlank()) return code
+            if (code == "->") return "only outbound connection is up"
+            if (code == "<-") return "only inbound connection is up"
+            val normalized = code.replace("-", "_").uppercase()
+            return try {
+                valueOf(normalized).description
+            } catch (_: IllegalArgumentException) {
+                code
+            }
         }
     }
 }

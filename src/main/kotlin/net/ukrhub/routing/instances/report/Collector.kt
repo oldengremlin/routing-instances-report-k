@@ -12,28 +12,29 @@
  * See the License for the specific language governing permissions and limitations
  * under the License.
  */
-package net.ukrhub.routing.instances.report;
-
-import java.util.Map;
+package net.ukrhub.routing.instances.report
 
 /**
  * Common contract for all router collectors.
  *
- * <p>Each implementation connects to one router, retrieves its configuration,
- * and populates the shared {@code instances} and {@code vrfVplsList} maps via
- * {@link RoutingInstance#merge}.</p>
+ * Each implementation connects to one router, retrieves its configuration,
+ * and populates the shared `instances` and `vrfVplsList` maps via
+ * [RoutingInstance.merge].
  */
-public interface Collector {
+interface Collector {
 
     /**
-     * Collects routing service definitions from the specified router and merges
-     * them into the shared result maps.
+     * Collects routing service definitions from the specified router and
+     * merges them into the shared result maps.
      *
      * @param hostname     router hostname or IP address to connect to
-     * @param instances    shared map keyed by {@link HashUtils#computeKey}; updated in place
+     * @param instances    shared map keyed by [HashUtils.computeKey]; updated in place
      * @param vrfVplsList  shared ordered map of RD-string → {name, href} used to build the RD index
-     * @throws Exception   on any transport or parse error (caller logs and continues)
      */
-    void collect(String hostname, Map<String, RoutingInstance> instances,
-                 Map<String, Map<String, String>> vrfVplsList) throws Exception;
+    @Throws(Exception::class)
+    fun collect(
+        hostname: String,
+        instances: MutableMap<String, RoutingInstance>,
+        vrfVplsList: MutableMap<String, MutableMap<String, String>>,
+    )
 }

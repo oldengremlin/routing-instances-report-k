@@ -14,7 +14,7 @@ docker build -t routing-instances-report .
 ```
 
 ```bash
-# Regenerate docs/classes.svg (PlantUML) and target/reports/apidocs (Javadoc):
+# Regenerate docs/classes.svg (PlantUML) and target/reports/dokka (Dokka API docs):
 mvn -P docs generate-resources
 ```
 
@@ -22,7 +22,7 @@ There are no automated tests; the Dockerfile is the primary integration target.
 
 ## Architecture
 
-The tool is a single-shot Java 21 CLI that collects VRF/VPLS routing instance definitions from network routers and writes one HTML report. It runs inside a Docker container (nginx + JRE 21) that re-invokes it every 24 hours via a shell loop (`bin/routing-instances-report.sh`), started as a background process by nginx's entrypoint (`docker-entrypoint.d/40-routing-instances-report.sh`).
+The tool is a single-shot Kotlin 2.1 / JVM 21 CLI that collects VRF/VPLS routing instance definitions from network routers and writes one HTML report. Sources live in `src/main/kotlin/net/ukrhub/routing/instances/report/` and are compiled by `kotlin-maven-plugin`; the entry point is the top-level `main` in `RoutingInstancesReport.kt` (file annotated `@file:JvmName("RoutingInstancesReport")` so the JAR's `Main-Class` stays `net.ukrhub.routing.instances.report.RoutingInstancesReport`). It runs inside a Docker container (nginx + JRE 21) that re-invokes it every 24 hours via a shell loop (`bin/routing-instances-report.sh`), started as a background process by nginx's entrypoint (`docker-entrypoint.d/40-routing-instances-report.sh`).
 
 **Three-phase collection** (`RoutingInstancesReport.main`):
 
@@ -49,7 +49,7 @@ A `Semaphore(5)` limits simultaneous network connections; disk-only collectors (
 - `JuniperSwitchCollector`, `JuniperL2circuitCollector`, `JuniperBridgedomainsCollector` — read from xmlCache (set by Phase 1); no network access
 - `JuniperDownStateCollector` — separate NETCONF session; calls `fetchRpcs()` with two RPCs in one SSH connection; does not implement `collect()` — use `collectDownState()` instead
 
-**Data model** (`RoutingInstance.java`): Lombok `@Data` — holds type, name, RD, and a list of router host-entry strings. Also contains the static `merge()` method (synchronized) used by all collectors to insert/update an instance in the shared maps.
+**Data model** (`RoutingInstance.kt`): plain Kotlin class with `var` properties and a `MutableList<String>` for hosts. The `merge()` function lives on the companion object, is `@Synchronized`, and is exposed via `@JvmStatic` so callers use `RoutingInstance.merge(...)` from any context.
 
 **Deduplication key** (`HashUtils.computeKey`): instance name padded to 50 chars + MD5 + SHA-1, matching the original Perl implementation so the same VRF present on multiple routers collapses into one row listing all routers.
 
@@ -84,4 +84,4 @@ A `Semaphore(5)` limits simultaneous network connections; disk-only collectors (
 
 ## Logging
 
-Uses Lombok `@Log4j2`; all output goes to stdout (`docker logs`). JSch SSH-handshake noise is hard-capped at WARN regardless of `LOG_LEVEL`.
+Each `.kt` file declares its logger at the top level via `private val log: Logger = LogManager.getLogger(SomeClass::class.java)`. All output goes to stdout (`docker logs`). JSch SSH-handshake noise is hard-capped at WARN regardless of `LOG_LEVEL`.

@@ -1,8 +1,13 @@
-# routing-instances-report
+# routing-instances-report (Kotlin)
 
 Збирає конфігурацію L2/L3 сервісів з мережевих маршрутизаторів
 (Juniper JunOS, Cisco IOS, MikroTik RouterOS) і публікує актуальний HTML-звіт,
 що роздається nginx.
+
+> Це Kotlin-порт оригінальної Java-реалізації
+> [oldengremlin/routing-instances-report](https://github.com/oldengremlin/routing-instances-report).
+> Семантика, формат звіту, структура класів та змінні оточення збережені.
+> Замість Lombok — companion-object'и та top-level логери Log4j2.
 
 ## Навіщо
 
@@ -21,7 +26,7 @@
 │                                                     │
 │  ┌──────────────────────────┐   ┌─────────────────┐ │
 │  │  routing-instances-report│   │      nginx      │ │
-│  │  (Java, раз на добу)     │──▶│  роздає HTML    │ │
+│  │  (Kotlin/JVM, раз на добу)│──▶│  роздає HTML    │ │
 │  │                          │   │  на порту 80    │ │
 │  │  Juniper  ← NETCONF/SSH  │   └─────────────────┘ │
 │  │  Cisco    ← Telnet       │                       │
@@ -88,9 +93,9 @@ VRF, що присутній на кількох маршрутизаторах,
 
 ## Логування
 
-Застосунок використовує [Log4j2](https://logging.apache.org/log4j/2.x/) (через
-Lombok `@Log4j2`). Весь вивід іде до **stdout**, тому Docker перехоплює його
-через `docker logs`.
+Застосунок використовує [Log4j2](https://logging.apache.org/log4j/2.x/) — у кожному
+`.kt`-файлі на рівні файлу оголошується `private val log: Logger = LogManager.getLogger(SomeClass::class.java)`.
+Весь вивід іде до **stdout**, тому Docker перехоплює його через `docker logs`.
 
 ### Рівні логування
 
@@ -156,12 +161,12 @@ environment:
 
 ![Діаграма класів](docs/classes.svg)
 
-Діаграма і Javadoc перегенеруються однією командою:
+Діаграма і Dokka API-документація перегенеруються однією командою:
 
 ```bash
 mvn -P docs generate-resources
-# результат: docs/classes.svg  (PlantUML)
-#            target/reports/apidocs/  (Javadoc)
+# результат: docs/classes.svg              (PlantUML)
+#            target/reports/dokka/          (Dokka, HTML)
 ```
 
 Потребує Java і доступу до інтернету для завантаження `plantuml.jar` (один раз,
@@ -173,30 +178,30 @@ mvn -P docs generate-resources
 ```
 routing-instances-report/
 ├── Dockerfile                           багатоетапне збирання (JDK 21 → nginx + JRE 21)
-├── pom.xml                              Maven-збирання (fat JAR через maven-shade-plugin)
+├── pom.xml                              Maven-збирання (kotlin-maven-plugin + fat JAR через maven-shade-plugin)
 ├── bin/
 │   └── routing-instances-report.sh     добовий цикл (запускає JAR, спить 24 год)
 ├── docker-entrypoint.d/
 │   └── 40-routing-instances-report.sh  запускається entrypoint nginx у фоні
-└── src/main/java/net/ukrhub/routing/instances/report/
-    ├── RoutingInstancesReport.java      головний клас — читає env vars, керує збиранням,
-    │                                    перевіряє orphan-пари (findOrphans)
-    ├── RoutingInstance.java             модель даних (@Data Lombok) + статичний merge()
-    ├── HashUtils.java                   складений ключ MD5 + SHA-1 (сумісний з Perl)
-    ├── Collector.java                   інтерфейс — void collect(host, instances, vrfVplsList)
-    ├── AbstractJuniperCollector.java    базовий клас: NETCONF транспорт (fetchRpcs, fetchNetconf,
+└── src/main/kotlin/net/ukrhub/routing/instances/report/
+    ├── RoutingInstancesReport.kt        точка входу (top-level main, @file:JvmName("RoutingInstancesReport"))
+    │                                    — читає env vars, керує збиранням, перевіряє orphan-пари (findOrphans)
+    ├── RoutingInstance.kt               модель даних (var-властивості) + companion-object merge()
+    ├── HashUtils.kt                     object — складений ключ MD5 + SHA-1 (сумісний з Perl)
+    ├── Collector.kt                     інтерфейс — fun collect(host, instances, vrfVplsList)
+    ├── AbstractJuniperCollector.kt      базовий клас: NETCONF транспорт (fetchRpcs, fetchNetconf,
     │                                    readOrFetch) + XML/hostname хелпери
-    ├── JuniperCollector.java            routing-instances (VRF, VPLS/L2, VPLS/L3)
-    ├── JuniperSwitchCollector.java      connections/interface-switch (SWITCH)
-    ├── JuniperL2circuitCollector.java   l2circuit/neighbor/interface (L2CIRCUIT)
-    ├── JuniperBridgedomainsCollector.java bridge-domains/domain (BRIDGE/L2, BRIDGE/L3)
-    ├── JuniperDownStateCollector.java   get-l2ckt-connection-information<down/> +
+    ├── JuniperCollector.kt              routing-instances (VRF, VPLS/L2, VPLS/L3)
+    ├── JuniperSwitchCollector.kt        connections/interface-switch (SWITCH)
+    ├── JuniperL2circuitCollector.kt     l2circuit/neighbor/interface (L2CIRCUIT)
+    ├── JuniperBridgedomainsCollector.kt bridge-domains/domain (BRIDGE/L2, BRIDGE/L3)
+    ├── JuniperDownStateCollector.kt     get-l2ckt-connection-information<down/> +
     │                                    get-vpls-connection-information<down/> в одній NETCONF-сесії
-    ├── ConnectionStatus.java            enum статус-кодів L2CIRCUIT/VPLS з людиночитаним описом
-    ├── LoAddressMapper.java             lo0 IP → ім'я маршрутизатора зі збережених дампів
-    ├── CiscoCollector.java              Telnet, show running-config
-    ├── RouterOSCollector.java           SSH exec, /ip route vrf export compact
-    └── ReportGenerator.java            генератор HTML-звіту з трьома індексами та двома аудитними таблицями
+    ├── ConnectionStatus.kt              enum class L2CIRCUIT/VPLS статус-кодів з описами
+    ├── LoAddressMapper.kt               object — lo0 IP → ім'я маршрутизатора зі збережених дампів
+    ├── CiscoCollector.kt                Telnet, show running-config
+    ├── RouterOSCollector.kt             SSH exec, /ip route vrf export compact
+    └── ReportGenerator.kt              object — генератор HTML-звіту з трьома індексами та двома аудитними таблицями
 ```
 
 ## Змінні оточення
@@ -269,9 +274,10 @@ services:
 
 | Бібліотека | Призначення |
 |------------|-------------|
+| [Kotlin stdlib](https://kotlinlang.org/api/latest/jvm/stdlib/) | Стандартна бібліотека Kotlin (компілюється до JVM 21) |
 | [com.github.mwiede/jsch](https://github.com/mwiede/jsch) | SSH-транспорт для Juniper NETCONF і RouterOS |
 | [commons-net](https://commons.apache.org/proper/commons-net/) | Telnet-клієнт для Cisco IOS |
-| [Lombok](https://projectlombok.org/) | Скорочення шаблонного коду (`@Data` на `RoutingInstance`) |
+| [Log4j2](https://logging.apache.org/log4j/2.x/) | Логування |
 
 ## Ліцензія
 

@@ -12,12 +12,20 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>21</maven.compiler.release>
+        <kotlin.version>2.1.21</kotlin.version>
+        <kotlin.compiler.jvmTarget>21</kotlin.compiler.jvmTarget>
         <exec.mainClass>net.ukrhub.routing.instances.report.RoutingInstancesReport</exec.mainClass>
-        <lombok.version>1.18.46</lombok.version>
         <log4j.version>2.25.3</log4j.version>
     </properties>
 
     <dependencies>
+        <!-- Kotlin standard library -->
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-stdlib</artifactId>
+            <version>${kotlin.version}</version>
+        </dependency>
+
         <!-- Modern JSch fork for SSH (Juniper NETCONF + RouterOS) -->
         <dependency>
             <groupId>com.github.mwiede</groupId>
@@ -30,14 +38,6 @@
             <groupId>commons-net</groupId>
             <artifactId>commons-net</artifactId>
             <version>3.13.0</version>
-        </dependency>
-
-        <!-- Lombok — compile-time only -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>${lombok.version}</version>
-            <scope>provided</scope>
         </dependency>
 
         <!-- Log4j2 -->
@@ -54,19 +54,23 @@
     </dependencies>
 
     <build>
+        <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>
         <plugins>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.15.0</version>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-maven-plugin</artifactId>
+                <version>${kotlin.version}</version>
+                <executions>
+                    <execution>
+                        <id>compile</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
                 <configuration>
-                    <annotationProcessorPaths>
-                        <path>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                            <version>${lombok.version}</version>
-                        </path>
-                    </annotationProcessorPaths>
+                    <jvmTarget>${kotlin.compiler.jvmTarget}</jvmTarget>
                 </configuration>
             </plugin>
             <plugin>
@@ -96,7 +100,7 @@
 
     <profiles>
         <!--
-            Regenerate docs/classes.svg (PlantUML) and target/reports/apidocs (Javadoc):
+            Regenerate docs/classes.svg (PlantUML) and target/reports/dokka (Dokka):
                 mvn -P docs generate-resources
             Requires: Java (already required), downloads plantuml.jar automatically.
         -->
@@ -151,20 +155,26 @@
                             </execution>
                         </executions>
                     </plugin>
-                    <!-- Step 3: generate Javadoc → target/reports/apidocs -->
+                    <!-- Step 3: generate Dokka API docs → target/reports/dokka -->
                     <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-javadoc-plugin</artifactId>
-                        <version>3.12.0</version>
+                        <groupId>org.jetbrains.dokka</groupId>
+                        <artifactId>dokka-maven-plugin</artifactId>
+                        <version>1.9.20</version>
                         <executions>
                             <execution>
-                                <id>generate-javadoc</id>
+                                <id>generate-dokka</id>
                                 <phase>generate-resources</phase>
                                 <goals>
-                                    <goal>javadoc</goal>
+                                    <goal>dokka</goal>
                                 </goals>
                             </execution>
                         </executions>
+                        <configuration>
+                            <outputDir>${project.build.directory}/reports/dokka</outputDir>
+                            <sourceDirectories>
+                                <dir>${project.basedir}/src/main/kotlin</dir>
+                            </sourceDirectories>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>
