@@ -8,6 +8,10 @@
 > [oldengremlin/routing-instances-report](https://github.com/oldengremlin/routing-instances-report).
 > Java-версія заморожена; нова функціональність розвивається тут.
 
+> 📖 Цей самий вміст продубльовано в [GitHub Wiki проєкту](https://github.com/oldengremlin/routing-instances-report-k/wiki),
+> розкладеному по сторінках за розділами. Якщо змінюєте текст — оновлюйте
+> обидва місця, щоб не розходилися.
+
 ---
 
 ## Зміст
