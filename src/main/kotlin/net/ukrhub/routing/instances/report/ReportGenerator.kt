@@ -85,6 +85,13 @@ ${"\t"}</tbody>
     private val VCID_PAT: Regex = Regex("^(\\d+)/")
 
     /**
+     * Matches a host-entry token (interface name, router name, etc.) that
+     * carries one or more `(-)` / `(!)` status markers. Group 0 is the whole
+     * token including its markers, used to wrap the token in a colored span.
+     */
+    private val MARKED_TOKEN: Regex = Regex("""[A-Za-z0-9._/:-]+(?:\(-\)|\(!\))+""")
+
+    /**
      * Builds and writes the HTML report.
      */
     @Throws(IOException::class)
@@ -195,7 +202,7 @@ ${"\t"}</tbody>
                 resolvedHosts.joinToString(", "),
             )
 
-            val hostsHtml = resolvedHosts.joinToString("<br>")
+            val hostsHtml = resolvedHosts.joinToString("<br>") { colorize(it) }
 
             val vcm = VCID_PAT.find(ri.name)
             val vcidBack = if (vcm != null) {
@@ -224,6 +231,20 @@ ${"\t"}</tbody>
         }
         return sb.toString()
     }
+
+    /**
+     * Wraps each `name(-)` / `name(!)` / `name(-)(!)` token in a colored
+     * `<span>`. A token containing `(!)` (interface absent from the running
+     * configuration) is rendered in crimson; one with `(-)` only (inactive
+     * reference) is rendered in magenta. The marker itself is preserved in
+     * the visible text. Operates on already HTML-escaped input.
+     */
+    private fun colorize(html: String): String =
+        MARKED_TOKEN.replace(html) { mr ->
+            val token = mr.value
+            val color = if ("(!)" in token) "crimson" else "magenta"
+            "<span style=\"color:$color\">$token</span>"
+        }
 
     /**
      * Replaces bare IPv4/IPv6 addresses in [s] with `ROUTERNAME/ADDRESS`

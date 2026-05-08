@@ -58,7 +58,7 @@ A `Semaphore(5)` limits simultaneous network connections; disk-only collectors (
 - VPLS/L2: `ROUTER[:siteId][(-)] [(vpls-id)][(vlan-id)] [→ ifaces] [→ neighbors]`
 - VPLS/L3: like VPLS/L2 but with `→ irb[(-)][(!)]` before interfaces
 
-Interface annotations: `(-)` marks an `inactive="inactive"` reference inside the routing-instance / bridge-domain block; `(!)` marks an interface name that has no matching definition under the top-level `<interfaces>` block (i.e. the operator removed the underlying physical/unit but the routing-instance still references it).
+Interface annotations: `(-)` marks an `inactive="inactive"` reference inside the routing-instance / bridge-domain block; `(!)` marks an interface name that has no matching definition under the top-level `<interfaces>` block (i.e. the operator removed the underlying physical/unit but the routing-instance still references it). In the HTML output `ReportGenerator.colorize()` wraps any `name(-)` / `name(!)` / `name(-)(!)` token in a `<span style="color:…">`: `crimson` when the token contains `(!)`, `magenta` otherwise. The marker is preserved in the visible text. Logging is unaffected.
 
 **`LoAddressMapper`** builds an `IP → router-name` map by XPath-extracting all `lo0` addresses from the cached XML dumps. Used by `ReportGenerator` and `JuniperDownStateCollector` to resolve bare neighbor IPs to router names.
 
