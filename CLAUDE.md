@@ -92,3 +92,5 @@ Interface annotations: `(-)` marks an `inactive="inactive"` reference inside the
 ## Logging
 
 Each `.kt` file declares its logger at the top level via `private val log: Logger = LogManager.getLogger(SomeClass::class.java)`. All output goes to stdout (`docker logs`). JSch SSH-handshake noise is hard-capped at WARN regardless of `LOG_LEVEL`.
+
+`ReportGenerator.generate()` echoes the orphan, down-state and lt-tunnel tables to the log right before writing the HTML, one line per row, so they're grep-able without opening the report. Format mirrors the table columns; lt rows are sorted by `(router, sideA.iface)`. Inactive markers `(-)` appear verbatim; `(!)` and the HTML colorize spans are HTML-only.
