@@ -54,11 +54,15 @@ A `Semaphore(5)` limits simultaneous network connections; disk-only collectors (
 **Deduplication key** (`HashUtils.computeKey`): instance name padded to 50 chars + MD5 + SHA-1, matching the original Perl implementation so the same VRF present on multiple routers collapses into one row listing all routers.
 
 **Host entry format** written by `JuniperCollector`:
-- VRF: `ROUTER[(-)] [→ iface1, iface2[(-)]`
+- VRF: `ROUTER[(-)] [→ iface1, iface2[(-)][(!)]`
 - VPLS/L2: `ROUTER[:siteId][(-)] [(vpls-id)][(vlan-id)] [→ ifaces] [→ neighbors]`
-- VPLS/L3: like VPLS/L2 but with `→ irb[(-)]` before interfaces
+- VPLS/L3: like VPLS/L2 but with `→ irb[(-)][(!)]` before interfaces
+
+Interface annotations: `(-)` marks an `inactive="inactive"` reference inside the routing-instance / bridge-domain block; `(!)` marks an interface name that has no matching definition under the top-level `<interfaces>` block (i.e. the operator removed the underlying physical/unit but the routing-instance still references it).
 
 **`LoAddressMapper`** builds an `IP → router-name` map by XPath-extracting all `lo0` addresses from the cached XML dumps. Used by `ReportGenerator` and `JuniperDownStateCollector` to resolve bare neighbor IPs to router names.
+
+**`InterfaceRegistry`** — per-host index of every `<interfaces>/interface` definition (and its `<unit>` children, recorded as `name.unit`). Lazily parses the cached XML on first lookup. The four config-parsing Juniper collectors (`JuniperCollector`, `JuniperSwitchCollector`, `JuniperL2circuitCollector`, `JuniperBridgedomainsCollector`) call `isMissing(hostname, ifaceName)` for each interface they reference; a `true` answer adds `(!)` after the name in the host entry. When the host's XML is unavailable (no cache, no disk dump, parse error) the registry returns `false` for every query, so a single fetch failure never mass-flags interfaces.
 
 **`ConnectionStatus`** — enum of Juniper L2CIRCUIT/VPLS status codes (e.g. `NP`, `OL`, `VC_DN`). `describe(code)` maps them to human-readable strings; handles `->` / `<-` asymmetric-up cases separately.
 

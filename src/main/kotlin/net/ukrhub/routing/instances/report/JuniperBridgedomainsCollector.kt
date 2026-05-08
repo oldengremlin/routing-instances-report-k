@@ -48,7 +48,8 @@ class JuniperBridgedomainsCollector(
     login: String,
     pass: String,
     xmlCache: ConcurrentHashMap<String, String>,
-) : AbstractJuniperCollector(login, pass, xmlCache) {
+    ifaceRegistry: InterfaceRegistry,
+) : AbstractJuniperCollector(login, pass, xmlCache, ifaceRegistry) {
 
     override fun collect(
         hostname: String,
@@ -77,7 +78,11 @@ class JuniperBridgedomainsCollector(
                 val iface = ifaceNodes.item(j)
                 val ifaceName = xp.evaluate("name/text()", iface).trim()
                 val ifaceInactive = if (iface is Element) iface.getAttribute("inactive") else ""
-                ifaces.add(ifaceName + if (ifaceInactive == "inactive") "(-)" else "")
+                ifaces.add(
+                    ifaceName +
+                        (if (ifaceInactive == "inactive") "(-)" else "") +
+                        (if (ifaceRegistry.isMissing(hostname, ifaceName)) "(!)" else ""),
+                )
             }
 
             val routingIfaceNode = xp.evaluate("routing-interface", domain, XPathConstants.NODE) as Node?
@@ -93,7 +98,10 @@ class JuniperBridgedomainsCollector(
             val riPart = if (routingIfaceStr.isEmpty()) {
                 ""
             } else {
-                routingIfaceStr + (if (routingIfaceInactive == "inactive") "(-)" else "") + " → "
+                routingIfaceStr +
+                    (if (routingIfaceInactive == "inactive") "(-)" else "") +
+                    (if (ifaceRegistry.isMissing(hostname, routingIfaceStr)) "(!)" else "") +
+                    " → "
             }
             val hostEntry = routerName +
                 (if (inactive == "inactive") "(-)" else "") +

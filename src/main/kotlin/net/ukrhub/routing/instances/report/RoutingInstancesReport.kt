@@ -71,11 +71,12 @@ fun main(args: Array<String>) {
     val vrfVplsList: MutableMap<String, MutableMap<String, String>> = LinkedHashMap()
     val semaphore = Semaphore(maxConcurrent)
     val xmlCache = ConcurrentHashMap<String, String>()
+    val ifaceRegistry = InterfaceRegistry(xmlCache)
 
-    val juniper = JuniperCollector(login, pass, xmlCache)
-    val juniperSwitch = JuniperSwitchCollector(login, pass, xmlCache)
-    val juniperL2circuit = JuniperL2circuitCollector(login, pass, xmlCache)
-    val juniperBridges = JuniperBridgedomainsCollector(login, pass, xmlCache)
+    val juniper = JuniperCollector(login, pass, xmlCache, ifaceRegistry)
+    val juniperSwitch = JuniperSwitchCollector(login, pass, xmlCache, ifaceRegistry)
+    val juniperL2circuit = JuniperL2circuitCollector(login, pass, xmlCache, ifaceRegistry)
+    val juniperBridges = JuniperBridgedomainsCollector(login, pass, xmlCache, ifaceRegistry)
     val cisco = CiscoCollector(login, pass, ciscoEnable)
     val routeros = RouterOSCollector(login, pass)
 
@@ -125,7 +126,7 @@ fun main(args: Array<String>) {
     // Phase 3: operational down-state (needs loAddresses)
     log.info("Phase 3: collecting down state")
     val downConnections: MutableList<Array<String>> = Collections.synchronizedList(mutableListOf())
-    val downCollector = JuniperDownStateCollector(login, pass, xmlCache)
+    val downCollector = JuniperDownStateCollector(login, pass, xmlCache, ifaceRegistry)
     runParallel(juniperHosts) { host ->
         semaphore.acquireUninterruptibly()
         try {

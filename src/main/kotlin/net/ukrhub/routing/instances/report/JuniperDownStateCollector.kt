@@ -45,7 +45,8 @@ class JuniperDownStateCollector(
     login: String,
     pass: String,
     xmlCache: ConcurrentHashMap<String, String>,
-) : AbstractJuniperCollector(login, pass, xmlCache) {
+    ifaceRegistry: InterfaceRegistry,
+) : AbstractJuniperCollector(login, pass, xmlCache, ifaceRegistry) {
 
     /** Not used — operational state is fetched via [collectDownState]. */
     override fun collect(

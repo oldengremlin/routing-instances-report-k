@@ -63,6 +63,8 @@ abstract class AbstractJuniperCollector(
     private val pass: String,
     /** In-memory XML cache shared across all Juniper collectors in one run. */
     protected val xmlCache: ConcurrentHashMap<String, String>,
+    /** Per-host index of `<interfaces>` definitions; shared across collectors. */
+    protected val ifaceRegistry: InterfaceRegistry,
 ) : Collector {
 
     /**

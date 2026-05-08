@@ -56,7 +56,8 @@ class JuniperCollector(
     login: String,
     pass: String,
     xmlCache: ConcurrentHashMap<String, String>,
-) : AbstractJuniperCollector(login, pass, xmlCache) {
+    ifaceRegistry: InterfaceRegistry,
+) : AbstractJuniperCollector(login, pass, xmlCache, ifaceRegistry) {
 
     /**
      * Fetches and parses all routing instances for [hostname].
@@ -140,7 +141,11 @@ class JuniperCollector(
                 val iface = ifaceNodes.item(j)
                 val ifaceName = xp.evaluate("name/text()", iface).trim()
                 val ifaceInactive = if (iface is Element) iface.getAttribute("inactive") else ""
-                ifaces.add(ifaceName + if (ifaceInactive == "inactive") "(-)" else "")
+                ifaces.add(
+                    ifaceName +
+                        (if (ifaceInactive == "inactive") "(-)" else "") +
+                        (if (ifaceRegistry.isMissing(hostname, ifaceName)) "(!)" else ""),
+                )
             }
 
             val idsPart = (if (vplsId.isEmpty()) "" else " ($vplsId)") +
@@ -148,7 +153,9 @@ class JuniperCollector(
             val riPart = if (routingIfaceStr.isEmpty()) {
                 ""
             } else {
-                " → $routingIfaceStr" + if (routingIfaceInactive == "inactive") "(-)" else ""
+                " → $routingIfaceStr" +
+                    (if (routingIfaceInactive == "inactive") "(-)" else "") +
+                    (if (ifaceRegistry.isMissing(hostname, routingIfaceStr)) "(!)" else "")
             }
             val neighborsPart = if (ldpNeighbors.isEmpty()) "" else " → " + ldpNeighbors.joinToString(", ")
             val hostEntry = buildString {

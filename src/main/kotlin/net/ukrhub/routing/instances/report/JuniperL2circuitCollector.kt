@@ -44,7 +44,8 @@ class JuniperL2circuitCollector(
     login: String,
     pass: String,
     xmlCache: ConcurrentHashMap<String, String>,
-) : AbstractJuniperCollector(login, pass, xmlCache) {
+    ifaceRegistry: InterfaceRegistry,
+) : AbstractJuniperCollector(login, pass, xmlCache, ifaceRegistry) {
 
     override fun collect(
         hostname: String,
@@ -73,9 +74,10 @@ class JuniperL2circuitCollector(
                 val vcId = xp.evaluate("virtual-circuit-id/text()", iface).trim()
                 val inactive = if (iface is Element) iface.getAttribute("inactive") else ""
 
+                val ifaceMissing = if (ifaceRegistry.isMissing(hostname, ifaceName)) "(!)" else ""
                 val hostEntry = routerName +
                     (if (inactive == "inactive") "(-)" else "") +
-                    ", " + ifaceName + " → " + neighborIp
+                    ", " + ifaceName + ifaceMissing + " → " + neighborIp
                 RoutingInstance.merge(
                     instances, vrfVplsList,
                     "$vcId/$routerName", "l2circuit", "", hostEntry,
