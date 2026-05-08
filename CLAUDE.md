@@ -37,6 +37,7 @@ env vars → RoutingInstancesReport.main()
     LoAddressMapper.build()             (extracts lo0 IPs from xmlCache for neighbor resolution)
     findOrphans()                       (checks L2CIRCUIT/VPLS peers for missing reverse entries)
     Phase 3: JuniperDownStateCollector  (SSH → NETCONF, get-l2ckt/get-vpls down RPCs)
+    LtTunnelLinker.build()              (pairs lt-* units via <peer-unit>; resolves each side via ifaceIndex)
     → ReportGenerator                  (writes indexed HTML to REPORT_PATH)
 ```
 
@@ -63,6 +64,8 @@ Interface annotations: `(-)` marks an `inactive="inactive"` reference inside the
 **`LoAddressMapper`** builds an `IP → router-name` map by XPath-extracting all `lo0` addresses from the cached XML dumps. Used by `ReportGenerator` and `JuniperDownStateCollector` to resolve bare neighbor IPs to router names.
 
 **`InterfaceRegistry`** — per-host index of every `<interfaces>/interface` definition (and its `<unit>` children, recorded as `name.unit`). Lazily parses the cached XML on first lookup. The four config-parsing Juniper collectors (`JuniperCollector`, `JuniperSwitchCollector`, `JuniperL2circuitCollector`, `JuniperBridgedomainsCollector`) call `isMissing(hostname, ifaceName)` for each interface they reference; a `true` answer adds `(!)` after the name in the host entry. When the host's XML is unavailable (no cache, no disk dump, parse error) the registry returns `false` for every query, so a single fetch failure never mass-flags interfaces.
+
+**`ifaceIndex` + `LtTunnelLinker`** — the four config-parsing collectors also write a reverse pointer `(router, iface) → IfaceRef(instance, type)` into a shared `ConcurrentHashMap` (`ifaceIndex`) as they merge each routing-instance / bridge-domain / l2circuit / interface-switch. After Phase 3, `LtTunnelLinker.build(juniperHosts, xmlCache, ifaceIndex)` walks each host's `<interfaces>/interface[starts-with(name,'lt-')]/unit` block, pairs units that mutually point at each other via `<peer-unit>`, and for each pair looks up which service references each side. The result list (`List<LtLink>`) feeds `ReportGenerator.buildLtLinkTable()`, producing the «Логічні тунелі (lt-*)» table with clickable instance links to the main table.
 
 **`ConnectionStatus`** — enum of Juniper L2CIRCUIT/VPLS status codes (e.g. `NP`, `OL`, `VC_DN`). `describe(code)` maps them to human-readable strings; handles `->` / `<-` asymmetric-up cases separately.
 

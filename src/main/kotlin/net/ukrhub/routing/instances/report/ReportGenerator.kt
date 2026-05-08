@@ -61,6 +61,7 @@ ${"\t"}</tbody>
     </table>
     <!--ORPHANTABLE-->
     <!--DOWNSTATETABLE-->
+    <!--LTLINKTABLE-->
     <!--VRFVPPOSTBR-->
 </body>
 </html>
@@ -102,6 +103,7 @@ ${"\t"}</tbody>
         loAddresses: Map<String, String>,
         orphans: List<Array<String>>,
         downConnections: List<Array<String>>,
+        ltLinks: List<LtLink>,
     ) {
         val html = HTML_TEMPLATE
             .replace(
@@ -114,6 +116,7 @@ ${"\t"}</tbody>
             )
             .replace("    <!--ORPHANTABLE-->", buildOrphanTable(orphans))
             .replace("    <!--DOWNSTATETABLE-->", buildDownStateTable(downConnections))
+            .replace("    <!--LTLINKTABLE-->", buildLtLinkTable(ltLinks, instances))
             .replace(
                 "    <!--VRFVPPOSTBR-->",
                 buildPostBr(instances.size) + "    <!--VRFVPPOSTBR-->",
@@ -339,6 +342,57 @@ ${"\t"}</tbody>
         sb.append("\t</tbody>\n")
         sb.append("    </table>\n")
         return sb.toString()
+    }
+
+    private fun buildLtLinkTable(
+        ltLinks: List<LtLink>,
+        instances: Map<String, RoutingInstance>,
+    ): String {
+        if (ltLinks.isEmpty()) return ""
+        val hrefByKey = HashMap<String, String>()
+        instances.values.forEach { ri -> hrefByKey["${ri.name}|${ri.type}"] = ri.hrefname }
+
+        val sorted = ltLinks.sortedWith(
+            compareBy({ it.router }, { it.sideA.iface }),
+        )
+
+        val sb = StringBuilder()
+        sb.append("    <h2>Логічні тунелі (lt-*)</h2>\n")
+        sb.append("    <table border=\"1\" cellpadding=\"2\" cellspacing=\"0\">\n")
+        sb.append("\t<tbody>\n")
+        sb.append(
+            "\t    <tr>" +
+                "<th>Тип A</th>" +
+                "<th>Інстанс A</th>" +
+                "<th>lt-A → lt-B</th>" +
+                "<th>Маршрутизатор</th>" +
+                "<th>Інстанс B</th>" +
+                "<th>Тип B</th>" +
+                "</tr>\n",
+        )
+        for (link in sorted) {
+            val arrow = colorize(h(link.sideA.iface)) + " → " + colorize(h(link.sideB.iface))
+            sb.append(
+                "\t    <tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n"
+                    .format(
+                        h(link.sideA.type),
+                        instanceLink(link.sideA, hrefByKey),
+                        arrow,
+                        h(link.router),
+                        instanceLink(link.sideB, hrefByKey),
+                        h(link.sideB.type),
+                    ),
+            )
+        }
+        sb.append("\t</tbody>\n")
+        sb.append("    </table>\n")
+        return sb.toString()
+    }
+
+    private fun instanceLink(side: LtSide, hrefByKey: Map<String, String>): String {
+        val href = hrefByKey["${side.instanceName}|${side.type}"]
+        val safeName = h(side.instanceName)
+        return if (href.isNullOrEmpty()) safeName else "<a href=\"#${h(href)}\">$safeName</a>"
     }
 
     /**

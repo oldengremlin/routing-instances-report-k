@@ -93,6 +93,21 @@ class InterfaceRegistry {
     +isMissing(hostname: String,\n        ifaceName: String): Boolean
 }
 
+class LtTunnelLinker <<object>> {
+    +{static} build(hosts: List,\n            xmlCache: Map,\n            ifaceIndex: Map): List<LtLink>
+}
+
+class IfaceRef <<data>> {
+    +instanceName: String
+    +type: String
+}
+
+class LtLink <<data>> {
+    +router: String
+    +sideA: LtSide
+    +sideB: LtSide
+}
+
 enum ConnectionStatus {
     EI, NP, MM, OL, RD, LD\n NP, VM, BK, ST, ...
     --
@@ -124,12 +139,21 @@ RoutingInstancesReport --> CiscoCollector : creates
 RoutingInstancesReport --> RouterOSCollector : creates
 RoutingInstancesReport --> LoAddressMapper : uses
 RoutingInstancesReport --> InterfaceRegistry : creates
+RoutingInstancesReport --> LtTunnelLinker : uses
 RoutingInstancesReport --> ReportGenerator : uses
 
 JuniperCollector ..> InterfaceRegistry : isMissing()
 JuniperSwitchCollector ..> InterfaceRegistry : isMissing()
 JuniperL2circuitCollector ..> InterfaceRegistry : isMissing()
 JuniperBridgedomainsCollector ..> InterfaceRegistry : isMissing()
+
+JuniperCollector ..> IfaceRef : ifaceIndex
+JuniperSwitchCollector ..> IfaceRef : ifaceIndex
+JuniperL2circuitCollector ..> IfaceRef : ifaceIndex
+JuniperBridgedomainsCollector ..> IfaceRef : ifaceIndex
+LtTunnelLinker ..> IfaceRef : reads
+LtTunnelLinker ..> LtLink : produces
+ReportGenerator ..> LtLink : reads
 
 ReportGenerator --> RoutingInstance : reads
 

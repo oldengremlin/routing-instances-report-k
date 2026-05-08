@@ -42,7 +42,8 @@ class JuniperSwitchCollector(
     pass: String,
     xmlCache: ConcurrentHashMap<String, String>,
     ifaceRegistry: InterfaceRegistry,
-) : AbstractJuniperCollector(login, pass, xmlCache, ifaceRegistry) {
+    ifaceIndex: ConcurrentHashMap<String, ConcurrentHashMap<String, IfaceRef>>,
+) : AbstractJuniperCollector(login, pass, xmlCache, ifaceRegistry, ifaceIndex) {
 
     override fun collect(
         hostname: String,
@@ -66,8 +67,11 @@ class JuniperSwitchCollector(
 
             val ifaceNodes = xp.evaluate("interface/name/text()", sw, XPathConstants.NODESET) as NodeList
             val ifaces = mutableListOf<String>()
+            val perRouter = ifaceIndex.computeIfAbsent(hostname.uppercase()) { ConcurrentHashMap() }
+            val ifaceRef = IfaceRef(name, "SWITCH")
             for (j in 0 until ifaceNodes.length) {
                 val ifaceName = ifaceNodes.item(j).nodeValue.trim()
+                if (ifaceName.isNotEmpty()) perRouter[ifaceName] = ifaceRef
                 ifaces.add(
                     ifaceName +
                         (if (ifaceRegistry.isMissing(hostname, ifaceName)) "(!)" else ""),

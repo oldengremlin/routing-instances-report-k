@@ -65,6 +65,13 @@ abstract class AbstractJuniperCollector(
     protected val xmlCache: ConcurrentHashMap<String, String>,
     /** Per-host index of `<interfaces>` definitions; shared across collectors. */
     protected val ifaceRegistry: InterfaceRegistry,
+    /**
+     * Reverse `(router, iface) → IfaceRef(instance, type)` index. Populated
+     * by config-parsing collectors as a side-effect of merging instances;
+     * consumed by [LtTunnelLinker] to stitch lt-tunnel pairs to their
+     * services. Outer key is `hostname.uppercase()`.
+     */
+    protected val ifaceIndex: ConcurrentHashMap<String, ConcurrentHashMap<String, IfaceRef>>,
 ) : Collector {
 
     /**

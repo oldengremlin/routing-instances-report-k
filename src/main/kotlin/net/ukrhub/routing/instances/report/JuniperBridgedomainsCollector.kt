@@ -49,7 +49,8 @@ class JuniperBridgedomainsCollector(
     pass: String,
     xmlCache: ConcurrentHashMap<String, String>,
     ifaceRegistry: InterfaceRegistry,
-) : AbstractJuniperCollector(login, pass, xmlCache, ifaceRegistry) {
+    ifaceIndex: ConcurrentHashMap<String, ConcurrentHashMap<String, IfaceRef>>,
+) : AbstractJuniperCollector(login, pass, xmlCache, ifaceRegistry, ifaceIndex) {
 
     override fun collect(
         hostname: String,
@@ -74,10 +75,12 @@ class JuniperBridgedomainsCollector(
 
             val ifaceNodes = xp.evaluate("interface", domain, XPathConstants.NODESET) as NodeList
             val ifaces = mutableListOf<String>()
+            val pendingIfaces = mutableListOf<String>()
             for (j in 0 until ifaceNodes.length) {
                 val iface = ifaceNodes.item(j)
                 val ifaceName = xp.evaluate("name/text()", iface).trim()
                 val ifaceInactive = if (iface is Element) iface.getAttribute("inactive") else ""
+                if (ifaceName.isNotEmpty()) pendingIfaces.add(ifaceName)
                 ifaces.add(
                     ifaceName +
                         (if (ifaceInactive == "inactive") "(-)" else "") +
@@ -94,6 +97,11 @@ class JuniperBridgedomainsCollector(
                     if (routingIfaceNode is Element) routingIfaceNode.getAttribute("inactive") else ""
             }
             val type = if (routingIfaceStr.isEmpty()) "bridge/l2" else "bridge/l3"
+
+            val perRouter = ifaceIndex.computeIfAbsent(hostname.uppercase()) { ConcurrentHashMap() }
+            val ifaceRef = IfaceRef(name, type.uppercase())
+            for (n in pendingIfaces) perRouter[n] = ifaceRef
+            if (routingIfaceStr.isNotEmpty()) perRouter[routingIfaceStr] = ifaceRef
 
             val riPart = if (routingIfaceStr.isEmpty()) {
                 ""

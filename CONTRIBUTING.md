@@ -424,6 +424,58 @@ sentinel `UNAVAILABLE: Set<String> = HashSet()` у `companion object`, який
 
 ---
 
+### `LtTunnelLinker` + `ifaceIndex`
+
+Логічні тунелі Juniper (`lt-X/Y/Z.A` ↔ `lt-X/Y/Z.B`) — це парні логічні
+інтерфейси, які склеюють два сервіси на одному маршрутизаторі. Класичний
+приклад: одна сторона `vlan-bridge` потрапляє у `bridge-domain`, друга
+`vlan-ccc` — у `protocols/l2circuit`. Щоб зрозуміти топологію «що з чим
+зчеплено», треба зіставити обидві сторони з їхніми сервісами.
+
+**Reverse-індекс `ifaceIndex`.** Звичайний `ConcurrentHashMap<String,
+ConcurrentHashMap<String, IfaceRef>>`, створюється у `main()` поруч із
+`instances` і пробрасується через `AbstractJuniperCollector` у всі п'ять
+Juniper-колекторів. Чотири конфіг-парсери — `JuniperCollector`,
+`JuniperBridgedomainsCollector`, `JuniperL2circuitCollector`,
+`JuniperSwitchCollector` — під час обходу інтерфейсних посилань кладуть у
+нього `(hostname.uppercase(), ifaceName) → IfaceRef(instanceName, typeUpper)`.
+`computeIfAbsent` на ConcurrentHashMap робить вкладене створення внутрішньої
+мапи безпечним для паралельних викликів.
+
+**Пара даних** (у `LtTunnelLinker.kt`):
+
+```kotlin
+data class IfaceRef(val instanceName: String, val type: String)
+data class LtSide(val iface: String, val instanceName: String, val type: String)
+data class LtLink(val router: String, val sideA: LtSide, val sideB: LtSide)
+```
+
+`LtTunnelLinker.build(hosts, xmlCache, ifaceIndex)` для кожного хоста:
+
+1. Парсить `<interfaces>/interface[starts-with(name,'lt-')]/unit`, збирає
+   `(unitName, peerUnit, inactive)`.
+2. Групує одиниці, що **взаємно** вказують одна на одну через `<peer-unit>`
+   — однобічна асиметрія сприймається як зламаний конфіг і відкидається.
+3. Для кожної пари ставить меншу одиницю на сторону A (числовий sort key, з
+   фолбеком на лексикографічний для нечислових імен) — щоб одна фізична
+   пара не дублювалася як `A→B` і `B→A`.
+4. Для кожної сторони шукає `IfaceRef` у `ifaceIndex[router][full-iface-name]`.
+   Якщо ніхто не «застовпив» цю одиницю — `instanceName="?"`, `type="?"`,
+   щоб «висячі» половинки тунелю були видні в звіті, а не тихо зникали.
+
+**Маркер `(-)`.** Якщо одиниця має `inactive="inactive"`, до її `iface`
+додається `(-)`, який потім `ReportGenerator.colorize()` перетворює на
+magenta-span. Маркер `(!)` тут не виникає — `lt-*/<unit>` за визначенням
+описаний у `<interfaces>` (інакше lt-тунель не існував би), тож
+`InterfaceRegistry.isMissing` поверне `false`.
+
+**Читання — без мережі.** LtTunnelLinker працює тільки з `xmlCache` і
+дисковими дампами; нових SSH/NETCONF-сесій не відкриває. Хости без XML
+тихо пропускаються (LT-таблиця для них буде порожня — те саме поводження,
+що в `LoAddressMapper`).
+
+---
+
 ### `RoutingInstancesReport` (точка входу)
 
 Файл анотовано `@file:JvmName("RoutingInstancesReport")`, тому верхньорівнева
@@ -448,7 +500,7 @@ sentinel `UNAVAILABLE: Set<String> = HashSet()` у `companion object`, який
 ### `ReportGenerator`
 
 Kotlin `object`. Метод `generate()` приймає всі зібрані дані і будує HTML
-рядковою заміною у шаблоні (`HTML_TEMPLATE`). П'ять розділів:
+рядковою заміною у шаблоні (`HTML_TEMPLATE`). Шість розділів:
 
 1. **VRF/VPLS за RD** — `buildVrfList()`: сортування за числовим добутком
    AS×ID з RD-рядка.
@@ -460,6 +512,10 @@ Kotlin `object`. Метод `generate()` приймає всі зібрані д
 4. **L2CIRCUIT/VPLS без пар** — `buildOrphanTable()`.
 5. **L2CIRCUIT/VPLS неактивний стан** — `buildDownStateTable()`: сортування
    за типом → роутер → числовий VC-ID → instance.
+6. **Логічні тунелі (lt-*)** — `buildLtLinkTable()`: одна стрічка на пару
+   `lt-X.A ↔ lt-X.B`, з посиланнями на основну таблицю для обох сервісів.
+   Сторона з `instanceName == "?"` показується без посилання — означає
+   «висячий» кінець тунелю.
 
 **`colorize()` — підсвітка маркерів.** Регулярний вираз
 `[A-Za-z0-9._/:-]+(?:\(-\)|\(!\))+` ловить кожен токен виду `name(-)` /

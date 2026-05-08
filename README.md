@@ -108,6 +108,12 @@ VRF, що присутній на кількох маршрутизаторах,
   під фільтром `<down/>` ця відповідь означає «жодного down-з'єднання не знайдено»,
   тобто стан здоровий, і показувати такий рядок було б оманливо. Інші повідомлення
   (`Instance not configured` тощо) проходять як справжні помилки.
+- **Логічні тунелі (lt-*)** — таблиця, що показує, які `lt-X/Y/Z.unit` пари склеюють
+  два сервіси на одному маршрутизаторі. Шість колонок: Тип A | Інстанс A | lt-A → lt-B
+  | Маршрутизатор | Інстанс B | Тип B. Імена інстансів — клікабельні якорі до основної
+  таблиці. Будується через `LtTunnelLinker`, що читає `<peer-unit>` зв'язки в блоці
+  `<interfaces>` і резолвить кожну сторону через reverse-індекс `(router, iface) →
+  (instance, type)`, заповнений конфіг-колекторами під час фази 2.
 
 Сирі XML/config-дампи зберігаються у `$DUMP_DIR/juniper-<host>.xml` і
 `$DUMP_DIR/cisco-<host>.conf` — зручно для налагодження. Обидва записуються
@@ -222,6 +228,7 @@ routing-instances-report/
     ├── ConnectionStatus.kt              enum class L2CIRCUIT/VPLS статус-кодів з описами
     ├── LoAddressMapper.kt               object — lo0 IP → ім'я маршрутизатора зі збережених дампів
     ├── InterfaceRegistry.kt             індекс <interfaces>/interface[/unit] на хост (для маркера (!))
+    ├── LtTunnelLinker.kt                object — пари lt-X.A ↔ lt-X.B та сервіси, до яких вони підв'язані
     ├── CiscoCollector.kt                Telnet, show running-config
     ├── RouterOSCollector.kt             SSH exec, /ip route vrf export compact
     └── ReportGenerator.kt              object — генератор HTML-звіту з трьома індексами та двома аудитними таблицями

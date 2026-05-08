@@ -72,11 +72,12 @@ fun main(args: Array<String>) {
     val semaphore = Semaphore(maxConcurrent)
     val xmlCache = ConcurrentHashMap<String, String>()
     val ifaceRegistry = InterfaceRegistry(xmlCache)
+    val ifaceIndex = ConcurrentHashMap<String, ConcurrentHashMap<String, IfaceRef>>()
 
-    val juniper = JuniperCollector(login, pass, xmlCache, ifaceRegistry)
-    val juniperSwitch = JuniperSwitchCollector(login, pass, xmlCache, ifaceRegistry)
-    val juniperL2circuit = JuniperL2circuitCollector(login, pass, xmlCache, ifaceRegistry)
-    val juniperBridges = JuniperBridgedomainsCollector(login, pass, xmlCache, ifaceRegistry)
+    val juniper = JuniperCollector(login, pass, xmlCache, ifaceRegistry, ifaceIndex)
+    val juniperSwitch = JuniperSwitchCollector(login, pass, xmlCache, ifaceRegistry, ifaceIndex)
+    val juniperL2circuit = JuniperL2circuitCollector(login, pass, xmlCache, ifaceRegistry, ifaceIndex)
+    val juniperBridges = JuniperBridgedomainsCollector(login, pass, xmlCache, ifaceRegistry, ifaceIndex)
     val cisco = CiscoCollector(login, pass, ciscoEnable)
     val routeros = RouterOSCollector(login, pass)
 
@@ -126,7 +127,7 @@ fun main(args: Array<String>) {
     // Phase 3: operational down-state (needs loAddresses)
     log.info("Phase 3: collecting down state")
     val downConnections: MutableList<Array<String>> = Collections.synchronizedList(mutableListOf())
-    val downCollector = JuniperDownStateCollector(login, pass, xmlCache, ifaceRegistry)
+    val downCollector = JuniperDownStateCollector(login, pass, xmlCache, ifaceRegistry, ifaceIndex)
     runParallel(juniperHosts) { host ->
         semaphore.acquireUninterruptibly()
         try {
@@ -137,8 +138,13 @@ fun main(args: Array<String>) {
     }
     log.info("Down state check: {} connections down total", downConnections.size)
 
+    val ltLinks = LtTunnelLinker.build(juniperHosts, xmlCache, ifaceIndex)
+    log.info("LT-tunnel pairs: {} entries", ltLinks.size)
+
     try {
-        ReportGenerator.generate(instances, vrfVplsList, reportPath, loAddresses, orphans, downConnections)
+        ReportGenerator.generate(
+            instances, vrfVplsList, reportPath, loAddresses, orphans, downConnections, ltLinks,
+        )
     } catch (e: IOException) {
         log.error("Failed to write report to {}: {}", reportPath, e.message)
     }

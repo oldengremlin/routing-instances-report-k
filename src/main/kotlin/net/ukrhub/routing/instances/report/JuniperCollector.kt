@@ -57,7 +57,8 @@ class JuniperCollector(
     pass: String,
     xmlCache: ConcurrentHashMap<String, String>,
     ifaceRegistry: InterfaceRegistry,
-) : AbstractJuniperCollector(login, pass, xmlCache, ifaceRegistry) {
+    ifaceIndex: ConcurrentHashMap<String, ConcurrentHashMap<String, IfaceRef>>,
+) : AbstractJuniperCollector(login, pass, xmlCache, ifaceRegistry, ifaceIndex) {
 
     /**
      * Fetches and parses all routing instances for [hostname].
@@ -135,18 +136,24 @@ class JuniperCollector(
                 type = if (routingIfaceStr.isEmpty()) "vpls/l2" else "vpls/l3"
             }
 
+            val routerKey = hostname.uppercase()
+            val perRouter = ifaceIndex.computeIfAbsent(routerKey) { ConcurrentHashMap() }
+            val ifaceRef = IfaceRef(name, type.uppercase())
+
             val ifaceNodes = xp.evaluate("interface", ri, XPathConstants.NODESET) as NodeList
             val ifaces = mutableListOf<String>()
             for (j in 0 until ifaceNodes.length) {
                 val iface = ifaceNodes.item(j)
                 val ifaceName = xp.evaluate("name/text()", iface).trim()
                 val ifaceInactive = if (iface is Element) iface.getAttribute("inactive") else ""
+                if (ifaceName.isNotEmpty()) perRouter[ifaceName] = ifaceRef
                 ifaces.add(
                     ifaceName +
                         (if (ifaceInactive == "inactive") "(-)" else "") +
                         (if (ifaceRegistry.isMissing(hostname, ifaceName)) "(!)" else ""),
                 )
             }
+            if (routingIfaceStr.isNotEmpty()) perRouter[routingIfaceStr] = ifaceRef
 
             val idsPart = (if (vplsId.isEmpty()) "" else " ($vplsId)") +
                 (if (vlanId.isEmpty()) "" else " ($vlanId)")
