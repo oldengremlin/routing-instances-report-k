@@ -135,6 +135,18 @@ ${"\t"}</tbody>
                 log.info("  down: {} | {} | {} | {} | {} | {}", r[0], r[1], r[2], r[3], r[4], r[5])
             }
         }
+        if (ltLinks.isNotEmpty()) {
+            log.info("Логічні тунелі (lt-*): {} пар", ltLinks.size)
+            ltLinks.sortedWith(compareBy({ it.router }, { it.sideA.iface })).forEach { l ->
+                log.info(
+                    "  lt: {} | {} | {} → {} | {} | {} | {}",
+                    l.sideA.type, l.sideA.instanceName,
+                    l.sideA.iface, l.sideB.iface,
+                    l.router,
+                    l.sideB.instanceName, l.sideB.type,
+                )
+            }
+        }
         PrintWriter(OutputStreamWriter(FileOutputStream(outputPath), StandardCharsets.UTF_8)).use { it.print(html) }
         log.info("Report written: {}", outputPath)
     }
