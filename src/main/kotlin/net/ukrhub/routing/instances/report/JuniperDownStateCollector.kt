@@ -145,6 +145,7 @@ class JuniperDownStateCollector(
                 }
             } else {
                 val errorText = xp.evaluate("neighbor-display-error/text()", neighbor).trim()
+                if (NO_DOWN_PAT.matches(errorText)) continue
                 results.add(
                     arrayOf(
                         "L2CIRCUIT",
@@ -215,6 +216,7 @@ class JuniperDownStateCollector(
                 }
             } else {
                 val errorText = xp.evaluate("instance-display-error/text()", inst).trim()
+                if (NO_DOWN_PAT.matches(errorText)) continue
                 results.add(
                     arrayOf(
                         "VPLS",
@@ -245,5 +247,14 @@ class JuniperDownStateCollector(
 
         /** Extracts the IP part from VPLS LDP neighbor connection-id. */
         private val VPLS_NEIGHBOR_PAT: Pattern = Pattern.compile("^([\\d:.a-fA-F]+)\\(")
+
+        /**
+         * Matches the per-instance/neighbor error text returned by the
+         * `<down/>` filter when nothing matches it. Under the down filter
+         * "No connections found" means *no down connections* — i.e. the
+         * instance is healthy — so such entries must not appear in the
+         * "L2CIRCUIT/VPLS неактивний стан" table.
+         */
+        private val NO_DOWN_PAT: Regex = Regex("(?i)^No connections found\\.?$")
     }
 }

@@ -47,7 +47,7 @@ A `Semaphore(5)` limits simultaneous network connections; disk-only collectors (
 - `AbstractJuniperCollector` — SSH/NETCONF transport (`subsystem-netconf` or `exec` channel), XML helpers (`readOrFetch`, `parseXml`, `extractRouterName`), in-memory `xmlCache` passed as constructor arg
 - `JuniperCollector` — fetches config, populates xmlCache, parses `//routing-instances/instance`
 - `JuniperSwitchCollector`, `JuniperL2circuitCollector`, `JuniperBridgedomainsCollector` — read from xmlCache (set by Phase 1); no network access
-- `JuniperDownStateCollector` — separate NETCONF session; calls `fetchRpcs()` with two RPCs in one SSH connection; does not implement `collect()` — use `collectDownState()` instead
+- `JuniperDownStateCollector` — separate NETCONF session; calls `fetchRpcs()` with two RPCs in one SSH connection; does not implement `collect()` — use `collectDownState()` instead. Rows whose `instance-display-error` / `neighbor-display-error` matches `NO_DOWN_PAT` (`(?i)^No connections found\.?$`) are dropped at parse time: under the `<down/>` filter that text means "no down items found" (instance is healthy), so emitting it would invert the meaning of the "L2CIRCUIT/VPLS неактивний стан" table. Other error texts pass through.
 
 **Data model** (`RoutingInstance.kt`): plain Kotlin class with `var` properties and a `MutableList<String>` for hosts. The `merge()` function lives on the companion object, is `@Synchronized`, and is exposed via `@JvmStatic` so callers use `RoutingInstance.merge(...)` from any context.
 

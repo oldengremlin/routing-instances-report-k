@@ -103,6 +103,11 @@ VRF, що присутній на кількох маршрутизаторах,
 - **L2CIRCUIT/VPLS неактивний стан** — аудитна таблиця down-з'єднань, отриманих через
   NETCONF RPC `get-l2ckt-connection-information<down/>` та `get-vpls-connection-information<down/>`;
   колонки: Тип | Маршрутизатор | VC-ID/VPLS-ID | Instance | Neighbor/Site | Статус.
+  Інстанси/сусіди, для яких Juniper повертає `instance-display-error` /
+  `neighbor-display-error` зі значенням `No connections found.`, відфільтровуються:
+  під фільтром `<down/>` ця відповідь означає «жодного down-з'єднання не знайдено»,
+  тобто стан здоровий, і показувати такий рядок було б оманливо. Інші повідомлення
+  (`Instance not configured` тощо) проходять як справжні помилки.
 
 Сирі XML/config-дампи зберігаються у `$DUMP_DIR/juniper-<host>.xml` і
 `$DUMP_DIR/cisco-<host>.conf` — зручно для налагодження. Обидва записуються
