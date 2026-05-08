@@ -730,7 +730,9 @@ runParallel(huaweiHosts) { host ->
   ```
 - **Документація** — KDoc на публічних класах, об'єктах і методах. Не
   дублюйте у коментарях те, що видно з імен. Перегенерується через
-  `mvn -P docs` (Dokka → `target/reports/dokka/`).
+  `mvn -P docs generate-resources` (Dokka → `target/reports/dokka/`,
+  PlantUML → `docs/classes.svg`). Без фази `generate-resources` Maven просто
+  активує профіль і нічого не запускає.
 - **Видимість** — Kotlin за замовчуванням `public`. Внутрішні утиліти
   (`LoAddressMapper`, `ConnectionStatus`) позначайте `internal`. Класи, що
   попадають у `public` API колекторів (як `InterfaceRegistry`), залишайте
